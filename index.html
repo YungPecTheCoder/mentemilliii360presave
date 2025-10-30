@@ -228,29 +228,70 @@
       }
     });
 
-            // ---------- CONTROLE MANUAL DE TOQUE (VERSÃO FINAL) ----------
+            
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+        // ---------- CONTROLE MANUAL DE TOQUE (ZOOM ATIVO EM TODOS OS MODOS) ----------
     let touchActive = false;
     let lastTouch = { x: 0, y: 0 };
     let rotX = 0, rotY = 0;
     let velocityX = 0, velocityY = 0;
     let prevDist = 0;
     let zooming = false;
+    let manualMovementAllowed = true;
 
     function enableManualTouch(enable) {
       const canvas = document.querySelector('canvas');
       if (!canvas) return;
-      // antes de ativar, remove tudo para não criar duplicatas
+
+      // remove tudo antes de registrar novamente
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
       canvas.removeEventListener('touchcancel', onTouchEnd);
 
-      if (enable) {
-        canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-        canvas.addEventListener('touchend', onTouchEnd, { passive: false });
-        canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
-      }
+      // sempre mantém o pinch‑zoom ativo
+      canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+      canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+      canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+      canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+      manualMovementAllowed = enable;
     }
 
     function onTouchStart(e) {
@@ -268,34 +309,33 @@
     function onTouchMove(e) {
       e.preventDefault();
 
-      // permite zoom sempre, inclusive com Motion ativo
+      // pinch zoom continua ativo mesmo com Motion ligado
       if (e.touches.length === 2) {
         zooming = true;
         const dist = getTouchDistance(e);
         if (prevDist) {
           const delta = prevDist - dist;
-          targetFov += delta * 0.35; // zoom rápido
+          targetFov += delta * 0.35; // zoom mais rápido
           targetFov = Math.min(Math.max(targetFov, 10), 100);
         }
         prevDist = dist;
         return;
       }
 
-      if (motionActive) return; // evita rotação ao usar o giroscópio
+      // move apenas se o Motion estiver desligado
+      if (!manualMovementAllowed || e.touches.length !== 1 || zooming) return;
 
-      if (e.touches.length === 1 && touchActive && !zooming) {
-        const dx = e.touches[0].clientX - lastTouch.x;
-        const dy = e.touches[0].clientY - lastTouch.y;
-        lastTouch.x = e.touches[0].clientX;
-        lastTouch.y = e.touches[0].clientY;
+      const dx = e.touches[0].clientX - lastTouch.x;
+      const dy = e.touches[0].clientY - lastTouch.y;
+      lastTouch.x = e.touches[0].clientX;
+      lastTouch.y = e.touches[0].clientY;
 
-        // controle invertido
-        velocityX = -dx * 0.4;
-        velocityY = -dy * 0.4;
-        rotY -= velocityX;
-        rotX -= velocityY;
-        rotX = Math.min(Math.max(rotX, -80), 80);
-      }
+      velocityX = -dx * 0.4;
+      velocityY = -dy * 0.4;
+
+      rotY -= velocityX;
+      rotX -= velocityY;
+      rotX = Math.min(Math.max(rotX, -80), 80);
     }
 
     function onTouchEnd(e) {
@@ -317,31 +357,29 @@
       return Math.sqrt(dx * dx + dy * dy);
     }
 
-    // ---------- ANIMAÇÃO DE CÂMERA / ZOOM ----------
     function animateCamera() {
-      const cameraEl = document.querySelector('#camera');
-      const camObj = cameraEl.getObject3D('camera');
-      if (camObj) {
-        const currentRot = cameraEl.getAttribute('rotation');
-        currentRot.x += (rotX - currentRot.x) * 0.15;
-        currentRot.y += (rotY - currentRot.y) * 0.15;
-        cameraEl.setAttribute('rotation', currentRot);
-
-        camObj.fov += (targetFov - camObj.fov) * 0.15;
-        camObj.updateProjectionMatrix();
+      const cEl = document.querySelector('#camera');
+      const cam = cEl.getObject3D('camera');
+      if (cam) {
+        const cur = cEl.getAttribute('rotation');
+        cur.x += (rotX - cur.x) * 0.15;
+        cur.y += (rotY - cur.y) * 0.15;
+        cEl.setAttribute('rotation', cur);
+        cam.fov += (targetFov - cam.fov) * 0.15;
+        cam.updateProjectionMatrix();
       }
       requestAnimationFrame(animateCamera);
     }
     animateCamera();
 
-    // ---------- ZOOM PELO SCROLL (DESKTOP) ----------
+    // Zoom por scroll (desktop)
     window.addEventListener('wheel', e => {
       e.preventDefault();
       targetFov += e.deltaY * 0.05;
       targetFov = Math.min(Math.max(targetFov, 10), 100);
     }, { passive: false });
 
-    // ---------- MOVIMENTO DO MOUSE (DESKTOP) ----------
+    // Movimento por mouse (desktop)
     let mouseDragging = false;
     let lastMouse = { x: 0, y: 0 };
     window.addEventListener('mousedown', e => {
@@ -360,7 +398,7 @@
       rotX = Math.min(Math.max(rotX, -80), 80);
     });
 
-    // ---------- TELA CHEIA ----------
+    // Tela cheia
     const toggleBtn = document.getElementById('toggleFullscreen');
     toggleBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
@@ -377,11 +415,12 @@
         : '⛶ Tela cheia';
     });
 
+    // Oculta fullscreen em celulares
     if (/Mobi|Android/i.test(navigator.userAgent)) {
       document.getElementById('fullscreen').style.display = 'none';
     }
 
-    // inicia os controles após a cena entrar em exibição
+    // Ativa controle manual após a cena carregar
     document.querySelector('a-scene').addEventListener('loaded', () => {
       enableManualTouch(true);
     });
