@@ -228,11 +228,13 @@
       }
     });
 
-    // ---------- NOVO SISTEMA DE TOQUE MANUAL ----------
+        // ---------- NOVO SISTEMA DE TOQUE MANUAL (AJUSTADO) ----------
     let touchActive = false;
     let lastTouch = { x: 0, y: 0 };
     let rotX = 0, rotY = 0;
     let velocityX = 0, velocityY = 0;
+    let prevDist = 0;
+    let zooming = false;
 
     function enableManualTouch(enable) {
       const canvas = document.querySelector('canvas');
@@ -242,44 +244,49 @@
         canvas.addEventListener('touchstart', onTouchStart, { passive: false });
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+        canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
       } else {
         canvas.removeEventListener('touchstart', onTouchStart);
         canvas.removeEventListener('touchmove', onTouchMove);
         canvas.removeEventListener('touchend', onTouchEnd);
+        canvas.removeEventListener('touchcancel', onTouchEnd);
       }
     }
 
     function onTouchStart(e) {
       if (e.touches.length === 1) {
         touchActive = true;
+        zooming = false;
         lastTouch.x = e.touches[0].clientX;
         lastTouch.y = e.touches[0].clientY;
       } else if (e.touches.length === 2) {
-        // início do gesto de zoom
+        zooming = true;
         prevDist = getTouchDistance(e);
       }
     }
 
     function onTouchMove(e) {
       e.preventDefault();
-      if (e.touches.length === 1 && touchActive) {
+      if (e.touches.length === 1 && touchActive && !zooming) {
         const dx = e.touches[0].clientX - lastTouch.x;
         const dy = e.touches[0].clientY - lastTouch.y;
         lastTouch.x = e.touches[0].clientX;
         lastTouch.y = e.touches[0].clientY;
 
-        // rotação direta e suave
-        velocityX = dx * 0.4;
-        velocityY = dy * 0.4;
+        // ✅ inverte o controle horizontal e vertical
+        velocityX = -dx * 0.4;
+        velocityY = -dy * 0.4;
+
         rotY -= velocityX;
         rotX -= velocityY;
         rotX = Math.min(Math.max(rotX, -80), 80);
       } else if (e.touches.length === 2) {
-        // gesto de zoom centralizado
+        // gesto de zoom centralizado e reto
+        zooming = true;
         const dist = getTouchDistance(e);
         if (prevDist) {
-          let delta = (prevDist - dist);
-          targetFov += delta * 0.25; // velocidade mais rápida
+          const delta = prevDist - dist;
+          targetFov += delta * 0.35; // aumenta velocidade do zoom
           targetFov = Math.min(Math.max(targetFov, 10), 100);
         }
         prevDist = dist;
@@ -289,7 +296,14 @@
     function onTouchEnd(e) {
       if (e.touches.length === 0) {
         touchActive = false;
+        zooming = false;
         prevDist = 0;
+      } else if (e.touches.length === 1) {
+        // se soltou um dedo, cancela o zoom limpamente pra evitar salto
+        zooming = false;
+        prevDist = 0;
+        lastTouch.x = e.touches[0].clientX;
+        lastTouch.y = e.touches[0].clientY;
       }
     }
 
@@ -299,22 +313,17 @@
       return Math.sqrt(dx * dx + dy * dy);
     }
 
-    let prevDist = 0;
-
-    /* PARTE 3 CONTINUA AQUI */
-
-        // ---------- ATUALIZAÇÃO SUAVE DA CÂMERA E DO ZOOM ----------
+    // ---------- ATUALIZAÇÃO SUAVE DA CÂMERA E DO ZOOM ----------
     function animateCamera() {
       const cameraEl = document.querySelector('#camera');
       const camObj = cameraEl.getObject3D('camera');
       if (camObj) {
-        // aplica suavização de rotação
-        let currentRot = cameraEl.getAttribute('rotation');
+        const currentRot = cameraEl.getAttribute('rotation');
         currentRot.x += (rotX - currentRot.x) * 0.15;
         currentRot.y += (rotY - currentRot.y) * 0.15;
         cameraEl.setAttribute('rotation', currentRot);
 
-        // aplica suavização de zoom
+        // suavização do zoom
         camObj.fov += (targetFov - camObj.fov) * 0.15;
         camObj.updateProjectionMatrix();
       }
@@ -322,25 +331,7 @@
     }
     animateCamera();
 
-    // ---------- CONTROLE DO MOUSE (PARA DESKTOP) ----------
-    let mouseDragging = false;
-    let lastMouse = { x: 0, y: 0 };
-    window.addEventListener('mousedown', e => {
-      mouseDragging = true;
-      lastMouse = { x: e.clientX, y: e.clientY };
-    });
-    window.addEventListener('mouseup', () => mouseDragging = false);
-    window.addEventListener('mousemove', e => {
-      if (!mouseDragging || motionActive) return;
-      const dx = e.clientX - lastMouse.x;
-      const dy = e.clientY - lastMouse.y;
-      lastMouse = { x: e.clientX, y: e.clientY };
-      rotY -= dx * 0.5;
-      rotX -= dy * 0.5;
-      rotX = Math.min(Math.max(rotX, -80), 80);
-    });
-
-    // ---------- CONTROLE DE ZOOM PELO SCROLL (DESKTOP) ----------
+    // ---------- ZOOM POR SCROLL (DESKTOP) ----------
     window.addEventListener('wheel', e => {
       if (motionActive) return;
       e.preventDefault();
@@ -348,7 +339,26 @@
       targetFov = Math.min(Math.max(targetFov, 10), 100);
     }, { passive: false });
 
-    // ---------- FUNÇÃO DE TELA CHEIA ----------
+    // ---------- MOVIMENTO POR MOUSE (DESKTOP) ----------
+    let mouseDragging = false;
+    let lastMouse = { x: 0, y: 0 };
+    window.addEventListener('mousedown', e => {
+      if (motionActive) return;
+      mouseDragging = true;
+      lastMouse = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener('mouseup', () => { mouseDragging = false; });
+    window.addEventListener('mousemove', e => {
+      if (!mouseDragging || motionActive) return;
+      const dx = e.clientX - lastMouse.x;
+      const dy = e.clientY - lastMouse.y;
+      lastMouse = { x: e.clientX, y: e.clientY };
+      rotY += dx * 0.5;       // invertido igual ao toque
+      rotX += dy * 0.5;
+      rotX = Math.min(Math.max(rotX, -80), 80);
+    });
+
+    // ---------- TELA CHEIA ----------
     const toggleBtn = document.getElementById('toggleFullscreen');
     toggleBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
@@ -365,12 +375,12 @@
         : '⛶ Tela cheia';
     });
 
-    // ---------- DESATIVA O BOTÃO DE TELA CHEIA EM CELULARES ----------
+    // ---------- DESATIVA FULLSCREEN EM CELULARES ----------
     if (/Mobi|Android/i.test(navigator.userAgent)) {
       document.getElementById('fullscreen').style.display = 'none';
     }
 
-    // Inicialmente ativa o controle manual (Motion off por padrão)
+    // inicia com controle manual habilitado
     document.addEventListener('DOMContentLoaded', () => {
       enableManualTouch(true);
     });
