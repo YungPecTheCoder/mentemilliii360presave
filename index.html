@@ -145,9 +145,82 @@
     </div>
   </div>
 
-  <!-- BOTÕES INFERIORES -->
-  <div id="fullscreen"><button id="toggleFullscreen">⛶ Tela cheia</button></div>
-  <div id="motion-toggle"><button id="toggleMotion">🎯 Ativar Motion Sense</button></div>
+<!-- BOTÕES INFERIORES -->
+<div id="fullscreen"><button id="toggleFullscreen">⛶ Tela cheia</button></div>
+
+<!-- BOTÃO DE MOTION CENTRALIZADO -->
+<div id="motion-toggle" class="centered">
+  <button id="toggleMotion">Ativar Motion Sense</button>
+</div>
+
+<!-- ÍCONES DE AJUDA NO CANTO -->
+<img id="icon-move" src="Icon 1.png" alt="Mover tela" />
+<img id="icon-zoom" src="Icon 2.png" alt="Zoom por pinça" />
+
+<style>
+  /* centraliza o botão como o pré-save */
+  #motion-toggle.centered {
+    position: absolute;
+    bottom: 160px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    text-align: center;
+    display: none;
+  }
+  #motion-toggle.centered button {
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    color: white;
+    font-size: 18px;
+    padding: 14px 38px;
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+  }
+  #motion-toggle.centered button:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+  }
+
+  /* ÍCONES DE INSTRUÇÃO */
+  #icon-move,
+  #icon-zoom {
+    position: absolute;
+    width: 55px;
+    height: 55px;
+    opacity: 0.9;
+    animation: blink 2.5s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 5;
+  }
+  #icon-move {
+    bottom: 20px;
+    left: 20px;
+    animation-delay: 0.4s;
+  }
+  #icon-zoom {
+    bottom: 20px;
+    right: 20px;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
+</style>
+
+<script>
+  // Ajusta texto do botão quando ativa/desativa Motion
+  const toggleMotionBtn = document.getElementById("toggleMotion");
+  toggleMotionBtn.addEventListener("click", () => {
+    if (!motionActive) {
+      toggleMotionBtn.textContent = "Desativar Motion Sense";
+    } else {
+      toggleMotionBtn.textContent = "Ativar Motion Sense";
+    }
+  });
+</script>
 
   <!-- BOTÃO DE PRÉ-SAVE -->
   <div id="presave-link">
