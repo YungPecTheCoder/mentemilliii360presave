@@ -24,9 +24,8 @@
       text-align: center;
       z-index: 3;
       transition: opacity 0.8s ease;
-      padding: 0 20px; /* afasta o conteúdo das bordas */
+      padding: 0 20px;
     }
-
     #start-screen::before {
       content: "";
       position: absolute;
@@ -36,7 +35,6 @@
       transform: scale(1.05);
       z-index: 1;
     }
-
     #start-content {
       position: relative;
       z-index: 3;
@@ -44,7 +42,6 @@
       max-width: 400px;
     }
 
-    /* ------ Espaçamento e tipografia ------ */
     #start-content h1 {
       margin: 0 0 8px 0;
       line-height: 1.2;
@@ -55,7 +52,6 @@
       line-height: 1.3;
     }
 
-    /* ------ Texto menor e suave para o aviso Motion Sense ------ */
     #start-content p.disclaimer {
       font-size: 14px;
       opacity: 0.9;
@@ -76,15 +72,23 @@
 
     button:hover { background: rgba(255,255,255,0.3); }
 
-    /* ---------- Botão tela cheia ---------- */
-    #fullscreen {
+    /* ---------- Controles inferiores ---------- */
+    #fullscreen, #motion-toggle {
       position: absolute;
       bottom: 15px;
-      right: 15px;
       z-index: 5;
       display: none;
     }
-    #fullscreen button {
+
+    #fullscreen {
+      right: 15px;
+    }
+
+    #motion-toggle {
+      left: 15px;
+    }
+
+    #fullscreen button, #motion-toggle button {
       background: rgba(0,0,0,0.4);
       border: none;
       color: white;
@@ -92,13 +96,22 @@
       padding: 8px 12px;
       border-radius: 4px;
       cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+    #fullscreen button:hover, #motion-toggle button:hover {
+      background: rgba(255,255,255,0.2);
+      transform: scale(1.05);
     }
 
-    /* ---------- Botão pré-save centralizado e ajustado ---------- */
+    #motion-toggle.active button {
+      background: rgba(0, 150, 50, 0.6);
+    }
+
+    /* ---------- Botão pré-save centralizado ---------- */
     #presave-link {
       position: absolute;
-      bottom: 85px;          
-      left: 50%;             
+      bottom: 85px;
+      left: 50%;
       transform: translateX(-50%);
       z-index: 5;
       display: none;
@@ -137,7 +150,7 @@
     canvas { cursor: grab; }
     canvas:active { cursor: grabbing; }
 
-    /* ----- Responsivo para celular ----- */
+    /* ----- Responsivo ----- */
     @media (max-width: 768px) {
       #presave-link {
         bottom: 75px;
@@ -148,11 +161,8 @@
       }
     }
 
-    /* Permite quebra da frase apenas em telas muito pequenas */
     @media (max-width: 320px) {
-      #presave-link a {
-        white-space: normal;
-      }
+      #presave-link a { white-space: normal; }
     }
   </style>
 </head>
@@ -163,17 +173,16 @@
     <div id="start-content">
       <h1>Mente Milionária Tape</h1>
       <p>Entre na experiência</p>
-      <p class="disclaimer">(Permita o uso do <b>Motion Sense</b> para olhar ao redor movimentando o celular)</p>
+      <p class="disclaimer">(Permita o uso do <b>Motion Sense</b> para olhar ao redor movimentando o celular.)</p>
       <button onclick="startExperience()">Entrar</button>
     </div>
   </div>
 
-  <!-- BOTÃO DE TELA CHEIA -->
-  <div id="fullscreen">
-    <button id="toggleFullscreen">⛶ Tela cheia</button>
-  </div>
+  <!-- BOTÕES INFERIORES -->
+  <div id="fullscreen"><button id="toggleFullscreen">⛶ Tela cheia</button></div>
+  <div id="motion-toggle"><button id="toggleMotion">🎯 Ativar Motion Sense</button></div>
 
-  <!-- BOTÃO DE PRÉ-SAVE CENTRALIZADO -->
+  <!-- BOTÃO DE PRÉ-SAVE -->
   <div id="presave-link">
     <a href="https://ditto.fm/mente-milionaria-tape" target="_blank">🎧 Fazer pré‑save</a>
   </div>
@@ -181,11 +190,10 @@
   <!-- CENA 360° -->
   <a-scene>
     <a-sky src="panorama-definitivo.jpg" rotation="0 -130 0"></a-sky>
-
     <a-entity id="cameraRig">
       <a-entity 
         camera
-        look-controls="reverseMouseDrag: true"
+        look-controls="reverseMouseDrag: true; touchEnabled: true; magicWindowTrackingEnabled: false"
         wasd-controls-enabled="false"
         id="camera"
         fov="80">
@@ -197,13 +205,15 @@
   <audio id="music" src="360soundtrack.mp3" loop></audio>
 
   <script>
-    /* ---------- Entrada ---------- */
+    let motionActive = false;
+
     function startExperience() {
       const start = document.getElementById('start-screen');
       const scene = document.querySelector('a-scene');
       const music = document.getElementById('music');
       const fsButton = document.getElementById('fullscreen');
       const linkBox = document.getElementById('presave-link');
+      const motionBtn = document.getElementById('motion-toggle');
 
       start.style.opacity = '0';
       setTimeout(() => {
@@ -212,21 +222,66 @@
         linkBox.style.display = 'block';
         music.play();
 
-        // Mostra o botão de tela cheia apenas em desktop
-        if (window.innerWidth > 768) {
-          fsButton.style.display = 'block';
-        }
+        // Mostra botões apenas em desktop
+        if (window.innerWidth > 768) fsButton.style.display = 'block';
+        motionBtn.style.display = 'block';
       }, 800);
     }
 
-    /* ---------- Zoom amortecido ---------- */
-    let targetFov = 80;
-    document.addEventListener('wheel', e => {
-      e.preventDefault();
-      targetFov += e.deltaY * 0.05;
-      targetFov = Math.min(Math.max(targetFov, 10), 100);
+    // ---------- Motion Sense toggle ----------
+    const motionToggleDiv = document.getElementById('motion-toggle');
+    const motionToggleBtn = document.getElementById('toggleMotion');
+
+    motionToggleBtn.addEventListener('click', async () => {
+      const cam = document.querySelector('#camera');
+      const controls = cam.getAttribute('look-controls');
+
+      if (!motionActive) {
+        // Pede permissão no iPhone
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+          try {
+            const permission = await DeviceOrientationEvent.requestPermission();
+            if (permission !== 'granted') return alert('Permissão negada para Motion Sense.');
+          } catch (e) {
+            alert('Não foi possível acessar o Motion Sense.');
+            return;
+          }
+        }
+
+        cam.setAttribute('look-controls', 'magicWindowTrackingEnabled: true; touchEnabled: false; reverseMouseDrag: true');
+        motionActive = true;
+        motionToggleDiv.classList.add('active');
+        motionToggleBtn.textContent = '🖐 Desativar Motion Sense';
+      } else {
+        cam.setAttribute('look-controls', 'magicWindowTrackingEnabled: false; touchEnabled: true; reverseMouseDrag: true');
+        motionActive = false;
+        motionToggleDiv.classList.remove('active');
+        motionToggleBtn.textContent = '🎯 Ativar Motion Sense';
+      }
+    });
+
+    // ---------- Zoom com dois dedos ----------
+    let prevDist = 0;
+    window.addEventListener('touchmove', e => {
+      if (e.touches.length === 2 && !motionActive) {
+        e.preventDefault();
+        const dx = e.touches[0].pageX - e.touches[1].pageX;
+        const dy = e.touches[0].pageY - e.touches[1].pageY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (prevDist) {
+          let delta = prevDist - dist;
+          targetFov += delta * 0.05;
+          targetFov = Math.min(Math.max(targetFov, 10), 100);
+        }
+        prevDist = dist;
+      }
     }, { passive: false });
 
+    window.addEventListener('touchend', () => { prevDist = 0; });
+
+    // ---------- Zoom amortecido ----------
+    let targetFov = 80;
     function animateZoom() {
       const camera = document.querySelector('#camera').getObject3D('camera');
       if (camera) {
@@ -237,7 +292,7 @@
     }
     animateZoom();
 
-    /* ---------- Movimento suave ---------- */
+    // ---------- Movimento suave por mouse ----------
     AFRAME.registerComponent('smooth-look', {
       init: function() {
         const ctx = this;
@@ -247,14 +302,12 @@
 
         window.addEventListener('mousedown', () => { ctx.dragging = true; });
         window.addEventListener('mouseup',   () => { ctx.dragging = false; });
-
         window.addEventListener('mousemove', e => {
           if (ctx.dragging) {
             ctx.velocityX = (e.movementX * 0.15);
             ctx.velocityY = (e.movementY * 0.15);
           }
         });
-
         ctx.el.sceneEl.addEventListener('renderstart', () => {
           ctx.camera = document.querySelector('#camera').components['look-controls'];
         });
@@ -264,19 +317,16 @@
         const rot = this.camera.el.getAttribute('rotation');
         rot.y -= this.velocityX;
         rot.x -= this.velocityY;
-
         this.velocityX *= 0.99;
         this.velocityY *= 0.99;
-
         if (Math.abs(this.velocityX) < 0.001) this.velocityX = 0;
         if (Math.abs(this.velocityY) < 0.001) this.velocityY = 0;
-
         this.camera.el.setAttribute('rotation', rot);
       }
     });
     document.querySelector('a-scene').setAttribute('smooth-look', '');
 
-    /* ---------- Tela cheia (apenas desktop) ---------- */
+    // ---------- Tela cheia ----------
     const toggleBtn = document.getElementById('toggleFullscreen');
     toggleBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
@@ -293,7 +343,7 @@
         : '⛶ Tela cheia';
     });
 
-    // Oculta o botão de fullscreen em dispositivos móveis
+    // Oculta fullscreen em celulares
     if (/Mobi|Android/i.test(navigator.userAgent)) {
       document.getElementById('fullscreen').style.display = 'none';
     }
