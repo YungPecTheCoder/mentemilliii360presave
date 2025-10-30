@@ -228,7 +228,7 @@
       }
     });
 
-        // ---------- NOVO SISTEMA DE TOQUE MANUAL (AJUSTADO) ----------
+            // ---------- CONTROLE MANUAL DE TOQUE (VERSÃO FINAL) ----------
     let touchActive = false;
     let lastTouch = { x: 0, y: 0 };
     let rotX = 0, rotY = 0;
@@ -239,17 +239,17 @@
     function enableManualTouch(enable) {
       const canvas = document.querySelector('canvas');
       if (!canvas) return;
+      // antes de ativar, remove tudo para não criar duplicatas
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+      canvas.removeEventListener('touchcancel', onTouchEnd);
 
       if (enable) {
         canvas.addEventListener('touchstart', onTouchStart, { passive: false });
         canvas.addEventListener('touchmove', onTouchMove, { passive: false });
         canvas.addEventListener('touchend', onTouchEnd, { passive: false });
         canvas.addEventListener('touchcancel', onTouchEnd, { passive: false });
-      } else {
-        canvas.removeEventListener('touchstart', onTouchStart);
-        canvas.removeEventListener('touchmove', onTouchMove);
-        canvas.removeEventListener('touchend', onTouchEnd);
-        canvas.removeEventListener('touchcancel', onTouchEnd);
       }
     }
 
@@ -267,29 +267,34 @@
 
     function onTouchMove(e) {
       e.preventDefault();
+
+      // permite zoom sempre, inclusive com Motion ativo
+      if (e.touches.length === 2) {
+        zooming = true;
+        const dist = getTouchDistance(e);
+        if (prevDist) {
+          const delta = prevDist - dist;
+          targetFov += delta * 0.35; // zoom rápido
+          targetFov = Math.min(Math.max(targetFov, 10), 100);
+        }
+        prevDist = dist;
+        return;
+      }
+
+      if (motionActive) return; // evita rotação ao usar o giroscópio
+
       if (e.touches.length === 1 && touchActive && !zooming) {
         const dx = e.touches[0].clientX - lastTouch.x;
         const dy = e.touches[0].clientY - lastTouch.y;
         lastTouch.x = e.touches[0].clientX;
         lastTouch.y = e.touches[0].clientY;
 
-        // ✅ inverte o controle horizontal e vertical
+        // controle invertido
         velocityX = -dx * 0.4;
         velocityY = -dy * 0.4;
-
         rotY -= velocityX;
         rotX -= velocityY;
         rotX = Math.min(Math.max(rotX, -80), 80);
-      } else if (e.touches.length === 2) {
-        // gesto de zoom centralizado e reto
-        zooming = true;
-        const dist = getTouchDistance(e);
-        if (prevDist) {
-          const delta = prevDist - dist;
-          targetFov += delta * 0.35; // aumenta velocidade do zoom
-          targetFov = Math.min(Math.max(targetFov, 10), 100);
-        }
-        prevDist = dist;
       }
     }
 
@@ -299,7 +304,6 @@
         zooming = false;
         prevDist = 0;
       } else if (e.touches.length === 1) {
-        // se soltou um dedo, cancela o zoom limpamente pra evitar salto
         zooming = false;
         prevDist = 0;
         lastTouch.x = e.touches[0].clientX;
@@ -313,7 +317,7 @@
       return Math.sqrt(dx * dx + dy * dy);
     }
 
-    // ---------- ATUALIZAÇÃO SUAVE DA CÂMERA E DO ZOOM ----------
+    // ---------- ANIMAÇÃO DE CÂMERA / ZOOM ----------
     function animateCamera() {
       const cameraEl = document.querySelector('#camera');
       const camObj = cameraEl.getObject3D('camera');
@@ -323,7 +327,6 @@
         currentRot.y += (rotY - currentRot.y) * 0.15;
         cameraEl.setAttribute('rotation', currentRot);
 
-        // suavização do zoom
         camObj.fov += (targetFov - camObj.fov) * 0.15;
         camObj.updateProjectionMatrix();
       }
@@ -331,15 +334,14 @@
     }
     animateCamera();
 
-    // ---------- ZOOM POR SCROLL (DESKTOP) ----------
+    // ---------- ZOOM PELO SCROLL (DESKTOP) ----------
     window.addEventListener('wheel', e => {
-      if (motionActive) return;
       e.preventDefault();
       targetFov += e.deltaY * 0.05;
       targetFov = Math.min(Math.max(targetFov, 10), 100);
     }, { passive: false });
 
-    // ---------- MOVIMENTO POR MOUSE (DESKTOP) ----------
+    // ---------- MOVIMENTO DO MOUSE (DESKTOP) ----------
     let mouseDragging = false;
     let lastMouse = { x: 0, y: 0 };
     window.addEventListener('mousedown', e => {
@@ -353,7 +355,7 @@
       const dx = e.clientX - lastMouse.x;
       const dy = e.clientY - lastMouse.y;
       lastMouse = { x: e.clientX, y: e.clientY };
-      rotY += dx * 0.5;       // invertido igual ao toque
+      rotY += dx * 0.5;
       rotX += dy * 0.5;
       rotX = Math.min(Math.max(rotX, -80), 80);
     });
@@ -375,13 +377,12 @@
         : '⛶ Tela cheia';
     });
 
-    // ---------- DESATIVA FULLSCREEN EM CELULARES ----------
     if (/Mobi|Android/i.test(navigator.userAgent)) {
       document.getElementById('fullscreen').style.display = 'none';
     }
 
-    // inicia com controle manual habilitado
-    document.addEventListener('DOMContentLoaded', () => {
+    // inicia os controles após a cena entrar em exibição
+    document.querySelector('a-scene').addEventListener('loaded', () => {
       enableManualTouch(true);
     });
   </script>
