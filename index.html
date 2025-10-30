@@ -69,7 +69,6 @@
       cursor: pointer;
       transition: background 0.3s;
     }
-
     button:hover { background: rgba(255,255,255,0.3); }
 
     /* ---------- Controles inferiores ---------- */
@@ -81,7 +80,6 @@
     }
 
     #fullscreen { right: 15px; }
-
     #motion-toggle { left: 15px; }
 
     #fullscreen button, #motion-toggle button {
@@ -92,16 +90,14 @@
       padding: 8px 12px;
       border-radius: 4px;
       cursor: pointer;
-      transition: background 0.3s, transform 0.2s;
+      transition: background .3s, transform .2s;
     }
-
     #fullscreen button:hover, #motion-toggle button:hover {
       background: rgba(255,255,255,0.2);
       transform: scale(1.05);
     }
-
     #motion-toggle.active button {
-      background: rgba(0, 150, 50, 0.6);
+      background: rgba(0,150,50,0.6);
     }
 
     /* ---------- Botão pré-save centralizado ---------- */
@@ -114,58 +110,35 @@
       display: none;
       text-align: center;
     }
-
     #presave-link a {
       text-decoration: none;
-      background: rgba(255, 255, 255, 0.4);
+      background: rgba(255,255,255,0.4);
       color: white;
       padding: 14px 38px;
       border-radius: 8px;
       font-size: 18px;
       backdrop-filter: blur(8px);
-      transition: background 0.3s, transform 0.2s;
+      transition: background .3s, transform .2s;
       display: inline-block;
       white-space: nowrap;
     }
-
-    #presave-link a:hover {
-      background: rgba(255, 255, 255, 0.55);
-      transform: scale(1.05);
-    }
-
-    #presave-link a:active {
-      background: rgba(120, 120, 120, 0.6);
-      transform: scale(0.98);
-    }
+    #presave-link a:hover { background: rgba(255,255,255,0.55); transform: scale(1.05); }
+    #presave-link a:active { background: rgba(120,120,120,0.6); transform: scale(0.98); }
 
     a-scene { display: none; }
-
-    .a-enter-vr, .a-enter-ar, .a-enter-vr-button, .a-fullscreen-button {
-      display: none !important;
-    }
-
+    .a-enter-vr, .a-enter-ar, .a-enter-vr-button, .a-fullscreen-button { display: none !important; }
     canvas { cursor: grab; }
     canvas:active { cursor: grabbing; }
 
-    /* ----- Responsivo ----- */
-    @media (max-width: 768px) {
-      #presave-link {
-        bottom: 75px;
-      }
-      #presave-link a {
-        font-size: 16px;
-        padding: 12px 32px;
-      }
+    @media (max-width:768px){
+      #presave-link{bottom:75px;}
+      #presave-link a{font-size:16px;padding:12px 32px;}
     }
-
-    @media (max-width: 320px) {
-      #presave-link a { white-space: normal; }
-    }
+    @media (max-width:320px){#presave-link a{white-space:normal;}}
   </style>
 </head>
 <body>
 
-  <!-- TELA INICIAL -->
   <div id="start-screen">
     <div id="start-content">
       <h1>Mente Milionária Tape</h1>
@@ -179,7 +152,6 @@
   <div id="fullscreen"><button id="toggleFullscreen">⛶ Tela cheia</button></div>
   <div id="motion-toggle"><button id="toggleMotion">🎯 Ativar Motion Sense</button></div>
 
-  <!-- BOTÃO DE PRÉ-SAVE -->
   <div id="presave-link">
     <a href="https://ditto.fm/mente-milionaria-tape" target="_blank">🎧 Fazer pré‑save</a>
   </div>
@@ -188,7 +160,7 @@
   <a-scene>
     <a-sky src="panorama-definitivo.jpg" rotation="0 -130 0"></a-sky>
     <a-entity id="cameraRig">
-      <a-entity 
+      <a-entity
         camera
         look-controls="reverseMouseDrag: true; touchEnabled: true; magicWindowTrackingEnabled: false"
         wasd-controls-enabled="false"
@@ -198,11 +170,11 @@
     </a-entity>
   </a-scene>
 
-  <!-- ÁUDIO -->
   <audio id="music" src="360soundtrack.mp3" loop></audio>
 
   <script>
     let motionActive = false;
+    let targetFov = 80;
 
     function startExperience() {
       const start = document.getElementById('start-screen');
@@ -230,13 +202,13 @@
 
     motionToggleBtn.addEventListener('click', async () => {
       const cam = document.querySelector('#camera');
-
       if (!motionActive) {
+        // pede permissão apenas agora
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
           try {
             const permission = await DeviceOrientationEvent.requestPermission();
             if (permission !== 'granted') return alert('Permissão negada para Motion Sense.');
-          } catch (e) {
+          } catch {
             alert('Não foi possível acessar o Motion Sense.');
             return;
           }
@@ -254,9 +226,8 @@
       }
     });
 
-    // ---------- Zoom com dois dedos (melhorado) ----------
+    // ---------- Zoom com dois dedos centralizado ----------
     let prevDist = 0;
-    let targetFov = 80;
     window.addEventListener('touchmove', e => {
       if (e.touches.length === 2) {
         e.preventDefault();
@@ -264,8 +235,8 @@
         const dy = e.touches[0].pageY - e.touches[1].pageY;
         const dist = Math.sqrt(dx*dx + dy*dy);
         if (prevDist) {
-          let delta = (prevDist - dist);
-          targetFov += delta * 0.15; // <<< mais sensível
+          const delta = (prevDist - dist);
+          targetFov += delta * 0.30; // <<< zoom mais rápido e uniforme
           targetFov = Math.min(Math.max(targetFov, 10), 100);
         }
         prevDist = dist;
@@ -274,69 +245,58 @@
 
     window.addEventListener('touchend', () => { prevDist = 0; });
 
-    // ---------- Zoom amortecido ----------
-    function animateZoom() {
-      const camera = document.querySelector('#camera').getObject3D('camera');
-      if (camera) {
-        camera.fov += (targetFov - camera.fov) * 0.1;
-        camera.updateProjectionMatrix();
+    function animateZoom(){
+      const cam = document.querySelector('#camera').getObject3D('camera');
+      if(cam){
+        cam.fov += (targetFov - cam.fov) * 0.15;
+        cam.updateProjectionMatrix();
       }
       requestAnimationFrame(animateZoom);
     }
     animateZoom();
 
-    // ---------- Movimento suave em todas direções ----------
+    // ---------- Movimento livre horizontal + vertical ----------
     AFRAME.registerComponent('smooth-look', {
-      init: function() {
-        const ctx = this;
-        ctx.velocityX = 0;
-        ctx.velocityY = 0;
-        ctx.dragging = false;
-        window.addEventListener('mousedown', () => { ctx.dragging = true; });
-        window.addEventListener('mouseup',   () => { ctx.dragging = false; });
-        window.addEventListener('mousemove', e => {
-          if (ctx.dragging) {
-            ctx.velocityX = e.movementX * 0.18;
-            ctx.velocityY = e.movementY * 0.18;
-          }
+      init(){
+        const ctx=this; ctx.dragX=0; ctx.dragY=0; ctx.dragging=false;
+        window.addEventListener('mousedown',()=>ctx.dragging=true);
+        window.addEventListener('mouseup',()=>ctx.dragging=false);
+        window.addEventListener('mousemove',e=>{
+          if(ctx.dragging){ ctx.dragX=e.movementX*0.5; ctx.dragY=e.movementY*0.5; }
         });
-        ctx.el.sceneEl.addEventListener('renderstart', () => {
-          ctx.camera = document.querySelector('#camera').components['look-controls'];
+        ctx.el.sceneEl.addEventListener('renderstart',()=>{
+          ctx.camera=document.querySelector('#camera').components['look-controls'];
         });
       },
-      tick: function() {
-        if (!this.camera) return;
-        const rot = this.camera.el.getAttribute('rotation');
-        rot.y -= this.velocityX;
-        rot.x -= this.velocityY;
-        rot.x = Math.min(Math.max(rot.x, -80), 80); // <<< evita virar de cabeça pra baixo
-        this.velocityX *= 0.95;
-        this.velocityY *= 0.95;
-        this.camera.el.setAttribute('rotation', rot);
+      tick(){
+        if(!this.camera) return;
+        const rot=this.camera.el.getAttribute('rotation');
+        rot.y-=this.dragX;
+        rot.x-=this.dragY;
+        rot.x=Math.min(Math.max(rot.x,-80),80);
+        this.dragX*=0.9; this.dragY*=0.9;
+        this.camera.el.setAttribute('rotation',rot);
       }
     });
-    document.querySelector('a-scene').setAttribute('smooth-look', '');
+    document.querySelector('a-scene').setAttribute('smooth-look','');
 
     // ---------- Tela cheia ----------
-    const toggleBtn = document.getElementById('toggleFullscreen');
-    toggleBtn.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
+    const toggleBtn=document.getElementById('toggleFullscreen');
+    toggleBtn.addEventListener('click',()=>{
+      if(!document.fullscreenElement){
         document.documentElement.requestFullscreen();
-        toggleBtn.textContent = '⛶ Sair da tela cheia';
-      } else {
+        toggleBtn.textContent='⛶ Sair da tela cheia';
+      }else{
         document.exitFullscreen();
-        toggleBtn.textContent = '⛶ Tela cheia';
+        toggleBtn.textContent='⛶ Tela cheia';
       }
     });
-    document.addEventListener('fullscreenchange', () => {
-      toggleBtn.textContent = document.fullscreenElement
-        ? '⛶ Sair da tela cheia'
-        : '⛶ Tela cheia';
+    document.addEventListener('fullscreenchange',()=>{
+      toggleBtn.textContent=document.fullscreenElement?'⛶ Sair da tela cheia':'⛶ Tela cheia';
     });
 
-    // Oculta fullscreen em celulares
-    if (/Mobi|Android/i.test(navigator.userAgent)) {
-      document.getElementById('fullscreen').style.display = 'none';
+    if(/Mobi|Android/i.test(navigator.userAgent)){
+      document.getElementById('fullscreen').style.display='none';
     }
   </script>
 </body>
