@@ -266,7 +266,7 @@
     
     
     
-        // ---------- CONTROLE MANUAL DE TOQUE (ZOOM ATIVO EM TODOS OS MODOS) ----------
+         // ---------- CONTROLE MANUAL DE TOQUE (ZOOM RETO EM TODOS OS MODOS) ----------
     let touchActive = false;
     let lastTouch = { x: 0, y: 0 };
     let rotX = 0, rotY = 0;
@@ -274,18 +274,17 @@
     let prevDist = 0;
     let zooming = false;
     let manualMovementAllowed = true;
+    let zoomLockUntil = 0;
 
     function enableManualTouch(enable) {
       const canvas = document.querySelector('canvas');
       if (!canvas) return;
 
-      // remove tudo antes de registrar novamente
       canvas.removeEventListener('touchstart', onTouchStart);
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
       canvas.removeEventListener('touchcancel', onTouchEnd);
 
-      // sempre mantém o pinch‑zoom ativo
       canvas.addEventListener('touchstart', onTouchStart, { passive: false });
       canvas.addEventListener('touchmove', onTouchMove, { passive: false });
       canvas.addEventListener('touchend', onTouchEnd, { passive: false });
@@ -303,26 +302,29 @@
       } else if (e.touches.length === 2) {
         zooming = true;
         prevDist = getTouchDistance(e);
+        // trava qualquer arrasto pelos próximos 60 ms
+        zoomLockUntil = Date.now() + 60;
       }
     }
 
     function onTouchMove(e) {
       e.preventDefault();
 
-      // pinch zoom continua ativo mesmo com Motion ligado
+      // gesto de zoom (ativo sempre, inclusive com Motion)
       if (e.touches.length === 2) {
         zooming = true;
         const dist = getTouchDistance(e);
-        if (prevDist) {
+        // ignora frames iniciais até estabilizar o segundo toque
+        if (Date.now() >= zoomLockUntil && prevDist) {
           const delta = prevDist - dist;
-          targetFov += delta * 0.35; // zoom mais rápido
+          targetFov += delta * 0.35;
           targetFov = Math.min(Math.max(targetFov, 10), 100);
         }
         prevDist = dist;
         return;
       }
 
-      // move apenas se o Motion estiver desligado
+      // movimento manual só se Motion estiver desligado
       if (!manualMovementAllowed || e.touches.length !== 1 || zooming) return;
 
       const dx = e.touches[0].clientX - lastTouch.x;
@@ -332,7 +334,6 @@
 
       velocityX = -dx * 0.4;
       velocityY = -dy * 0.4;
-
       rotY -= velocityX;
       rotX -= velocityY;
       rotX = Math.min(Math.max(rotX, -80), 80);
@@ -365,6 +366,7 @@
         cur.x += (rotX - cur.x) * 0.15;
         cur.y += (rotY - cur.y) * 0.15;
         cEl.setAttribute('rotation', cur);
+
         cam.fov += (targetFov - cam.fov) * 0.15;
         cam.updateProjectionMatrix();
       }
@@ -372,14 +374,14 @@
     }
     animateCamera();
 
-    // Zoom por scroll (desktop)
+    // Zoom pelo scroll (desktop)
     window.addEventListener('wheel', e => {
       e.preventDefault();
       targetFov += e.deltaY * 0.05;
       targetFov = Math.min(Math.max(targetFov, 10), 100);
     }, { passive: false });
 
-    // Movimento por mouse (desktop)
+    // Movimento com mouse (desktop)
     let mouseDragging = false;
     let lastMouse = { x: 0, y: 0 };
     window.addEventListener('mousedown', e => {
@@ -420,7 +422,6 @@
       document.getElementById('fullscreen').style.display = 'none';
     }
 
-    // Ativa controle manual após a cena carregar
     document.querySelector('a-scene').addEventListener('loaded', () => {
       enableManualTouch(true);
     });
