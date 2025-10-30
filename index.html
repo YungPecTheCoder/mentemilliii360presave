@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mente Milionária Tape 360° Tour</title>
+  <title>Mente Milionária Tape 360° Tour</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
     html, body {
@@ -17,7 +17,7 @@
     /* ---------- Tela inicial ---------- */
     #start-screen {
       position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -41,22 +41,18 @@
       color: white;
       max-width: 400px;
     }
-
     #start-content h1 {
       margin: 0 0 8px 0;
       line-height: 1.2;
     }
-
     #start-content p {
       margin: 4px 0;
       line-height: 1.3;
     }
-
     #start-content p.disclaimer {
       font-size: 14px;
       opacity: 0.9;
     }
-
     button {
       padding: 0.9em 1.4em;
       margin-top: 18px;
@@ -78,7 +74,6 @@
       z-index: 5;
       display: none;
     }
-
     #fullscreen { right: 15px; }
     #motion-toggle { left: 15px; }
 
@@ -100,7 +95,7 @@
       background: rgba(0,150,50,0.6);
     }
 
-    /* ---------- Botão pré-save centralizado ---------- */
+    /* ---------- Botão pré-save ---------- */
     #presave-link {
       position: absolute;
       bottom: 85px;
@@ -136,9 +131,11 @@
     }
     @media (max-width:320px){#presave-link a{white-space:normal;}}
   </style>
-</head>
+
+  </head>
 <body>
 
+  <!-- TELA INICIAL -->
   <div id="start-screen">
     <div id="start-content">
       <h1>Mente Milionária Tape</h1>
@@ -150,26 +147,28 @@
 
   <!-- BOTÕES INFERIORES -->
   <div id="fullscreen"><button id="toggleFullscreen">⛶ Tela cheia</button></div>
-  <div id="motion-toggle"><button id="toggleMotion">🎯 Ativar Motion Sense</button></div>
+  <div id="motion-toggle"><button id="toggleMotion">🎯 Ativar Motion Sense</button></div>
 
+  <!-- BOTÃO DE PRÉ-SAVE -->
   <div id="presave-link">
-    <a href="https://ditto.fm/mente-milionaria-tape" target="_blank">🎧 Fazer pré‑save</a>
+    <a href="https://ditto.fm/mente-milionaria-tape" target="_blank">🎧 Fazer pré‑save</a>
   </div>
 
   <!-- CENA 360° -->
   <a-scene>
     <a-sky src="panorama-definitivo.jpg" rotation="0 -130 0"></a-sky>
+
     <a-entity id="cameraRig">
       <a-entity
-        camera
-        look-controls="reverseMouseDrag: true; touchEnabled: true; magicWindowTrackingEnabled: false"
-        wasd-controls-enabled="false"
         id="camera"
-        fov="80">
+        camera="fov: 80"
+        look-controls="enabled: false"
+        wasd-controls-enabled="false">
       </a-entity>
     </a-entity>
   </a-scene>
 
+  <!-- ÁUDIO -->
   <audio id="music" src="360soundtrack.mp3" loop></audio>
 
   <script>
@@ -189,21 +188,21 @@
         start.style.display = 'none';
         scene.style.display = 'block';
         linkBox.style.display = 'block';
+        motionBtn.style.display = 'block';
         music.play();
 
         if (window.innerWidth > 768) fsButton.style.display = 'block';
-        motionBtn.style.display = 'block';
       }, 800);
     }
 
-    // ---------- Motion Sense toggle ----------
+    // ---------- MOTION TOGGLE ----------
     const motionToggleDiv = document.getElementById('motion-toggle');
     const motionToggleBtn = document.getElementById('toggleMotion');
 
     motionToggleBtn.addEventListener('click', async () => {
       const cam = document.querySelector('#camera');
       if (!motionActive) {
-        // pede permissão apenas agora
+        // pede permissão apenas quando o usuário ativa
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
           try {
             const permission = await DeviceOrientationEvent.requestPermission();
@@ -213,91 +212,168 @@
             return;
           }
         }
-
-        cam.setAttribute('look-controls', 'magicWindowTrackingEnabled: true; touchEnabled: true; reverseMouseDrag: true');
+        // Ativa motion sense e desativa controles manuais
+        cam.setAttribute('look-controls', 'enabled: true; magicWindowTrackingEnabled: true');
         motionActive = true;
+        enableManualTouch(false);
         motionToggleDiv.classList.add('active');
-        motionToggleBtn.textContent = '🖐 Desativar Motion Sense';
+        motionToggleBtn.textContent = '🖐 Desativar Motion Sense';
       } else {
-        cam.setAttribute('look-controls', 'magicWindowTrackingEnabled: false; touchEnabled: true; reverseMouseDrag: true');
+        // Desativa motion sense e reativa controles manuais
+        cam.setAttribute('look-controls', 'enabled: false');
         motionActive = false;
+        enableManualTouch(true);
         motionToggleDiv.classList.remove('active');
-        motionToggleBtn.textContent = '🎯 Ativar Motion Sense';
+        motionToggleBtn.textContent = '🎯 Ativar Motion Sense';
       }
     });
 
-    // ---------- Zoom com dois dedos centralizado ----------
-    let prevDist = 0;
-    window.addEventListener('touchmove', e => {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const dx = e.touches[0].pageX - e.touches[1].pageX;
-        const dy = e.touches[0].pageY - e.touches[1].pageY;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+    // ---------- NOVO SISTEMA DE TOQUE MANUAL ----------
+    let touchActive = false;
+    let lastTouch = { x: 0, y: 0 };
+    let rotX = 0, rotY = 0;
+    let velocityX = 0, velocityY = 0;
+
+    function enableManualTouch(enable) {
+      const canvas = document.querySelector('canvas');
+      if (!canvas) return;
+
+      if (enable) {
+        canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+        canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+      } else {
+        canvas.removeEventListener('touchstart', onTouchStart);
+        canvas.removeEventListener('touchmove', onTouchMove);
+        canvas.removeEventListener('touchend', onTouchEnd);
+      }
+    }
+
+    function onTouchStart(e) {
+      if (e.touches.length === 1) {
+        touchActive = true;
+        lastTouch.x = e.touches[0].clientX;
+        lastTouch.y = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        // início do gesto de zoom
+        prevDist = getTouchDistance(e);
+      }
+    }
+
+    function onTouchMove(e) {
+      e.preventDefault();
+      if (e.touches.length === 1 && touchActive) {
+        const dx = e.touches[0].clientX - lastTouch.x;
+        const dy = e.touches[0].clientY - lastTouch.y;
+        lastTouch.x = e.touches[0].clientX;
+        lastTouch.y = e.touches[0].clientY;
+
+        // rotação direta e suave
+        velocityX = dx * 0.4;
+        velocityY = dy * 0.4;
+        rotY -= velocityX;
+        rotX -= velocityY;
+        rotX = Math.min(Math.max(rotX, -80), 80);
+      } else if (e.touches.length === 2) {
+        // gesto de zoom centralizado
+        const dist = getTouchDistance(e);
         if (prevDist) {
-          const delta = (prevDist - dist);
-          targetFov += delta * 0.30; // <<< zoom mais rápido e uniforme
+          let delta = (prevDist - dist);
+          targetFov += delta * 0.25; // velocidade mais rápida
           targetFov = Math.min(Math.max(targetFov, 10), 100);
         }
         prevDist = dist;
       }
+    }
+
+    function onTouchEnd(e) {
+      if (e.touches.length === 0) {
+        touchActive = false;
+        prevDist = 0;
+      }
+    }
+
+    function getTouchDistance(e) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    let prevDist = 0;
+
+    /* PARTE 3 CONTINUA AQUI */
+
+        // ---------- ATUALIZAÇÃO SUAVE DA CÂMERA E DO ZOOM ----------
+    function animateCamera() {
+      const cameraEl = document.querySelector('#camera');
+      const camObj = cameraEl.getObject3D('camera');
+      if (camObj) {
+        // aplica suavização de rotação
+        let currentRot = cameraEl.getAttribute('rotation');
+        currentRot.x += (rotX - currentRot.x) * 0.15;
+        currentRot.y += (rotY - currentRot.y) * 0.15;
+        cameraEl.setAttribute('rotation', currentRot);
+
+        // aplica suavização de zoom
+        camObj.fov += (targetFov - camObj.fov) * 0.15;
+        camObj.updateProjectionMatrix();
+      }
+      requestAnimationFrame(animateCamera);
+    }
+    animateCamera();
+
+    // ---------- CONTROLE DO MOUSE (PARA DESKTOP) ----------
+    let mouseDragging = false;
+    let lastMouse = { x: 0, y: 0 };
+    window.addEventListener('mousedown', e => {
+      mouseDragging = true;
+      lastMouse = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener('mouseup', () => mouseDragging = false);
+    window.addEventListener('mousemove', e => {
+      if (!mouseDragging || motionActive) return;
+      const dx = e.clientX - lastMouse.x;
+      const dy = e.clientY - lastMouse.y;
+      lastMouse = { x: e.clientX, y: e.clientY };
+      rotY -= dx * 0.5;
+      rotX -= dy * 0.5;
+      rotX = Math.min(Math.max(rotX, -80), 80);
+    });
+
+    // ---------- CONTROLE DE ZOOM PELO SCROLL (DESKTOP) ----------
+    window.addEventListener('wheel', e => {
+      if (motionActive) return;
+      e.preventDefault();
+      targetFov += e.deltaY * 0.05;
+      targetFov = Math.min(Math.max(targetFov, 10), 100);
     }, { passive: false });
 
-    window.addEventListener('touchend', () => { prevDist = 0; });
-
-    function animateZoom(){
-      const cam = document.querySelector('#camera').getObject3D('camera');
-      if(cam){
-        cam.fov += (targetFov - cam.fov) * 0.15;
-        cam.updateProjectionMatrix();
-      }
-      requestAnimationFrame(animateZoom);
-    }
-    animateZoom();
-
-    // ---------- Movimento livre horizontal + vertical ----------
-    AFRAME.registerComponent('smooth-look', {
-      init(){
-        const ctx=this; ctx.dragX=0; ctx.dragY=0; ctx.dragging=false;
-        window.addEventListener('mousedown',()=>ctx.dragging=true);
-        window.addEventListener('mouseup',()=>ctx.dragging=false);
-        window.addEventListener('mousemove',e=>{
-          if(ctx.dragging){ ctx.dragX=e.movementX*0.5; ctx.dragY=e.movementY*0.5; }
-        });
-        ctx.el.sceneEl.addEventListener('renderstart',()=>{
-          ctx.camera=document.querySelector('#camera').components['look-controls'];
-        });
-      },
-      tick(){
-        if(!this.camera) return;
-        const rot=this.camera.el.getAttribute('rotation');
-        rot.y-=this.dragX;
-        rot.x-=this.dragY;
-        rot.x=Math.min(Math.max(rot.x,-80),80);
-        this.dragX*=0.9; this.dragY*=0.9;
-        this.camera.el.setAttribute('rotation',rot);
-      }
-    });
-    document.querySelector('a-scene').setAttribute('smooth-look','');
-
-    // ---------- Tela cheia ----------
-    const toggleBtn=document.getElementById('toggleFullscreen');
-    toggleBtn.addEventListener('click',()=>{
-      if(!document.fullscreenElement){
+    // ---------- FUNÇÃO DE TELA CHEIA ----------
+    const toggleBtn = document.getElementById('toggleFullscreen');
+    toggleBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
-        toggleBtn.textContent='⛶ Sair da tela cheia';
-      }else{
+        toggleBtn.textContent = '⛶ Sair da tela cheia';
+      } else {
         document.exitFullscreen();
-        toggleBtn.textContent='⛶ Tela cheia';
+        toggleBtn.textContent = '⛶ Tela cheia';
       }
     });
-    document.addEventListener('fullscreenchange',()=>{
-      toggleBtn.textContent=document.fullscreenElement?'⛶ Sair da tela cheia':'⛶ Tela cheia';
+    document.addEventListener('fullscreenchange', () => {
+      toggleBtn.textContent = document.fullscreenElement
+        ? '⛶ Sair da tela cheia'
+        : '⛶ Tela cheia';
     });
 
-    if(/Mobi|Android/i.test(navigator.userAgent)){
-      document.getElementById('fullscreen').style.display='none';
+    // ---------- DESATIVA O BOTÃO DE TELA CHEIA EM CELULARES ----------
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+      document.getElementById('fullscreen').style.display = 'none';
     }
+
+    // Inicialmente ativa o controle manual (Motion off por padrão)
+    document.addEventListener('DOMContentLoaded', () => {
+      enableManualTouch(true);
+    });
   </script>
 </body>
 </html>
