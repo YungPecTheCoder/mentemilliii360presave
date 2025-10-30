@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mixtape 360°</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: black;
+      font-family: "Inter", sans-serif;
+    }
+
+    /* ---------- Tela inicial ---------- */
+    #start-screen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      z-index: 3;
+      transition: opacity 0.8s ease;
+    }
+    #start-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("panorama-definitivo.jpg") center center / cover no-repeat;
+      filter: blur(12px) brightness(0.5);
+      transform: scale(1.05);
+      z-index: 1;
+    }
+    #start-content {
+      position: relative;
+      z-index: 3;
+      color: white;
+    }
+
+    button {
+      padding: 0.9em 1.4em;
+      margin-top: 20px;
+      font-size: 18px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      backdrop-filter: blur(6px);
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover { background: rgba(255,255,255,0.3); }
+
+    /* ---------- Botão tela cheia ---------- */
+    #fullscreen {
+      position: absolute;
+      bottom: 15px;
+      right: 15px;
+      z-index: 5;
+      display: none;
+    }
+    #fullscreen button {
+      background: rgba(0,0,0,0.4);
+      border: none;
+      color: white;
+      font-size: 14px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    /* ---------- Botão pré-save centralizado e maior ---------- */
+    #presave-link {
+      position: absolute;
+      bottom: 85px;          /* <<< afasta da borda inferior para não colidir com "Tela cheia" */
+      left: 50%;             /* centraliza horizontalmente */
+      transform: translateX(-50%);
+      z-index: 5;
+      display: none;
+      text-align: center;
+    }
+
+    #presave-link a {
+      text-decoration: none;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 14px 38px;    /* <<< tamanho do botão (maior) */
+      border-radius: 8px;
+      font-size: 18px;       /* <<< tamanho do texto */
+      backdrop-filter: blur(6px);
+      transition: background 0.3s, transform 0.2s;
+      display: inline-block;
+    }
+
+    #presave-link a:hover {
+      background: rgba(255,255,255,0.25);
+      transform: scale(1.05);  /* leve zoom ao passar o mouse */
+    }
+
+    a-scene { display: none; }
+
+    .a-enter-vr, .a-enter-ar, .a-enter-vr-button, .a-fullscreen-button {
+      display: none !important;
+    }
+
+    canvas { cursor: grab; }
+    canvas:active { cursor: grabbing; }
+
+    /* ----- Responsivo para celular ----- */
+    @media (max-width: 768px) {
+      #presave-link {
+        bottom: 75px;           /* um pouco mais perto em telas pequenas */
+      }
+      #presave-link a {
+        font-size: 16px;
+        padding: 12px 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TELA INICIAL -->
+  <div id="start-screen">
+    <div id="start-content">
+      <h1>Sua Mixtape 360°</h1>
+      <p>Entre na experiência</p>
+      <button onclick="startExperience()">Entrar</button>
+    </div>
+  </div>
+
+  <!-- BOTÃO DE TELA CHEIA -->
+  <div id="fullscreen">
+    <button id="toggleFullscreen">⛶ Tela cheia</button>
+  </div>
+
+  <!-- BOTÃO DE PRÉ-SAVE CENTRALIZADO -->
+  <div id="presave-link">
+    <a href="https://ditto.fm/mente-milionaria-tape" target="_blank">🎧 Fazer pré‑save</a>
+  </div>
+
+  <!-- CENA 360° -->
+  <a-scene>
+    <a-sky src="panorama-definitivo.jpg" rotation="0 -130 0"></a-sky>
+
+    <a-entity id="cameraRig">
+      <a-entity 
+        camera
+        look-controls="reverseMouseDrag: true"
+        wasd-controls-enabled="false"
+        id="camera"
+        fov="80">
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <!-- ÁUDIO -->
+  <audio id="music" src="360soundtrack.mp3" loop></audio>
+
+  <script>
+    /* ---------- Entrada ---------- */
+    function startExperience() {
+      const start = document.getElementById('start-screen');
+      const scene = document.querySelector('a-scene');
+      const music = document.getElementById('music');
+      const fsButton = document.getElementById('fullscreen');
+      const linkBox = document.getElementById('presave-link');
+
+      start.style.opacity = '0';
+      setTimeout(() => {
+        start.style.display = 'none';
+        scene.style.display = 'block';
+        fsButton.style.display = 'block';
+        linkBox.style.display = 'block';   // mostra o link centralizado
+        music.play();
+      }, 800);
+    }
+
+    /* ---------- Zoom amortecido ---------- */
+    let targetFov = 80;
+    document.addEventListener('wheel', e => {
+      e.preventDefault();
+      targetFov += e.deltaY * 0.05;
+      targetFov = Math.min(Math.max(targetFov, 10), 100);
+    }, { passive: false });
+
+    function animateZoom() {
+      const camera = document.querySelector('#camera').getObject3D('camera');
+      if (camera) {
+        camera.fov += (targetFov - camera.fov) * 0.1;
+        camera.updateProjectionMatrix();
+      }
+      requestAnimationFrame(animateZoom);
+    }
+    animateZoom();
+
+    /* ---------- Movimento suave ---------- */
+    AFRAME.registerComponent('smooth-look', {
+      init: function() {
+        const ctx = this;
+        ctx.velocityX = 0;
+        ctx.velocityY = 0;
+        ctx.dragging = false;
+
+        window.addEventListener('mousedown', () => { ctx.dragging = true; });
+        window.addEventListener('mouseup',   () => { ctx.dragging = false; });
+
+        window.addEventListener('mousemove', e => {
+          if (ctx.dragging) {
+            ctx.velocityX = (e.movementX * 0.15);
+            ctx.velocityY = (e.movementY * 0.15);
+          }
+        });
+
+        ctx.el.sceneEl.addEventListener('renderstart', () => {
+          ctx.camera = document.querySelector('#camera').components['look-controls'];
+        });
+      },
+      tick: function() {
+        if (!this.camera) return;
+        const rot = this.camera.el.getAttribute('rotation');
+        rot.y -= this.velocityX;
+        rot.x -= this.velocityY;
+
+        this.velocityX *= 0.99;
+        this.velocityY *= 0.99;
+
+        if (Math.abs(this.velocityX) < 0.001) this.velocityX = 0;
+        if (Math.abs(this.velocityY) < 0.001) this.velocityY = 0;
+
+        this.camera.el.setAttribute('rotation', rot);
+      }
+    });
+    document.querySelector('a-scene').setAttribute('smooth-look', '');
+
+    /* ---------- Tela cheia ---------- */
+    const toggleBtn = document.getElementById('toggleFullscreen');
+    toggleBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        toggleBtn.textContent = '⛶ Sair da tela cheia';
+      } else {
+        document.exitFullscreen();
+        toggleBtn.textContent = '⛶ Tela cheia';
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      toggleBtn.textContent = document.fullscreenElement
+        ? '⛶ Sair da tela cheia'
+        : '⛶ Tela cheia';
+    });
+  </script>
+</body>
+</html>
