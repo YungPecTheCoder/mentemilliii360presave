@@ -67,15 +67,26 @@
     }
     button:hover { background: rgba(255,255,255,0.3); }
 
-    /* ---------- Controles inferiores ---------- */
-    #fullscreen, #motion-toggle {
-      position: absolute;
-      bottom: 15px;
-      z-index: 5;
-      display: none;
-    }
-    #fullscreen { right: 15px; }
-    #motion-toggle { left: 15px; }
+
+    
+#fullscreen, #motion-toggle {
+  position: absolute;
+  bottom: 15px;
+  z-index: 5;
+  display: none;
+}
+
+/* Mantém o botão de tela cheia à direita */
+#fullscreen { right: 15px; }
+
+/* Centraliza o botão Motion horizontalmente */
+#motion-toggle {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+
+
 
     #fullscreen button, #motion-toggle button {
       background: rgba(0,0,0,0.4);
@@ -145,96 +156,61 @@
     </div>
   </div>
 
-<!-- BOTÕES INFERIORES -->
-<div id="fullscreen"><button id="toggleFullscreen">⛶ Tela cheia</button></div>
-
-<!-- BOTÃO DE MOTION CENTRALIZADO -->
-<div id="motion-toggle" class="centered">
-  <button id="toggleMotion">Ativar Motion Sense</button>
-</div>
-
-<!-- ÍCONES DE AJUDA NO CANTO -->
-<img id="icon-move" src="Icon 1.png" alt="Mover tela" />
-<img id="icon-zoom" src="Icon 2.png" alt="Zoom por pinça" />
-
-<style>
-  /* centraliza o botão como o pré-save */
-  #motion-toggle.centered {
-    position: absolute;
-    bottom: 160px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 5;
-    text-align: center;
-    display: none;
-  }
-  #motion-toggle.centered button {
-    background: rgba(0, 0, 0, 0.6);
-    border: none;
-    color: white;
-    font-size: 18px;
-    padding: 14px 38px;
-    border-radius: 8px;
-    backdrop-filter: blur(6px);
-    cursor: pointer;
-    transition: background 0.3s, transform 0.2s;
-  }
-  #motion-toggle.centered button:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: scale(1.05);
-  }
-
-  /* ÍCONES DE INSTRUÇÃO */
-  #icon-move,
-  #icon-zoom {
-    position: absolute;
-    width: 55px;
-    height: 55px;
-    opacity: 0.9;
-    animation: blink 2.5s ease-in-out infinite;
-    pointer-events: none;
-    z-index: 5;
-  }
-  #icon-move {
-    bottom: 20px;
-    left: 20px;
-    animation-delay: 0.4s;
-  }
-  #icon-zoom {
-    bottom: 20px;
-    right: 20px;
-  }
-  @keyframes blink {
-    0%, 100% { opacity: 0.2; }
-    50% { opacity: 1; }
-  }
-</style>
-
-<script>
-  // Ajusta texto do botão quando ativa/desativa Motion
-  const toggleMotionBtn = document.getElementById("toggleMotion");
-  toggleMotionBtn.addEventListener("click", () => {
-    if (!motionActive) {
-      toggleMotionBtn.textContent = "Desativar Motion Sense";
-    } else {
-      toggleMotionBtn.textContent = "Ativar Motion Sense";
-    }
-  });
-</script>
+  <!-- BOTÕES INFERIORES -->
+  <div id="fullscreen"><button id="toggleFullscreen">⛶ Tela cheia</button></div>
+  <div id="motion-toggle"><button id="toggleMotion"> Ativar Motion Sense</button></div>
 
   <!-- BOTÃO DE PRÉ-SAVE -->
   <div id="presave-link">
     <a href="https://ditto.fm/mente-milionaria-tape" target="_blank">🎧 Fazer pré‑save</a>
   </div>
 
+
+
+
+  <!-- ÍCONES DE INSTRUÇÃO (movimento e zoom) -->
+  <div id="corner-icons" style="display:none;">
+    <img src="Icon 1.png" alt="Mover tela" id="icon-move">
+    <img src="Icon 2.png" alt="Dar zoom" id="icon-zoom">
+  </div>
+
+  <style>
+    /* Ícones de ajuda ‑ canto inferior esquerdo */
+    #corner-icons {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      pointer-events: none;
+    }
+    #corner-icons img {
+      width: 48px;
+      height: 48px;
+      opacity: 0.85;
+      animation: blinkIcons 2.5s ease-in-out infinite;
+    }
+    @keyframes blinkIcons {
+      0%, 100% { opacity: 0.25; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+  </style>
+
+
+
+
+  
   <!-- CENA 360° -->
   <a-scene>
-    <a-sky src="panorama-definitivo.jpg" rotation="0 -130 0"></a-sky>
+    <a-sky src="panorama-definitivo.jpg" rotation="0 -90 0"></a-sky>
 
     <a-entity id="cameraRig">
       <a-entity
         id="camera"
-        camera="fov: 80"
+        camera="fov: 90"
         look-controls="enabled: false"
         wasd-controls-enabled="false">
       </a-entity>
@@ -246,7 +222,7 @@
 
   <script>
     let motionActive = false;
-    let targetFov = 80;
+    let targetFov = 90;
 
     function startExperience() {
       const start = document.getElementById('start-screen');
@@ -255,6 +231,7 @@
       const fsButton = document.getElementById('fullscreen');
       const linkBox = document.getElementById('presave-link');
       const motionBtn = document.getElementById('motion-toggle');
+      const cornerIcons = document.getElementById('corner-icons'); // <<< adicionada
 
       start.style.opacity = '0';
       setTimeout(() => {
@@ -265,6 +242,7 @@
         music.play();
 
         if (window.innerWidth > 768) fsButton.style.display = 'block';
+        cornerIcons.style.display = 'flex';             // <<< nova linha
       }, 800);
     }
 
@@ -290,14 +268,14 @@
         motionActive = true;
         enableManualTouch(false);
         motionToggleDiv.classList.add('active');
-        motionToggleBtn.textContent = '🖐 Desativar Motion Sense';
+        motionToggleBtn.textContent = ' Desativar Motion Sense';
       } else {
         // Desativa motion sense e reativa controles manuais
         cam.setAttribute('look-controls', 'enabled: false');
         motionActive = false;
         enableManualTouch(true);
         motionToggleDiv.classList.remove('active');
-        motionToggleBtn.textContent = '🎯 Ativar Motion Sense';
+        motionToggleBtn.textContent = ' Ativar Motion Sense';
       }
     });
 
