@@ -72,11 +72,11 @@
       cursor: pointer;
     }
 
-    /* ---------- Botão pré-save centralizado e maior ---------- */
+    /* ---------- Botão pré-save centralizado e ajustado ---------- */
     #presave-link {
       position: absolute;
-      bottom: 85px;          /* <<< afasta da borda inferior para não colidir com "Tela cheia" */
-      left: 50%;             /* centraliza horizontalmente */
+      bottom: 85px;          
+      left: 50%;             
       transform: translateX(-50%);
       z-index: 5;
       display: none;
@@ -85,19 +85,25 @@
 
     #presave-link a {
       text-decoration: none;
-      background: rgba(0,0,0,0.6);
+      background: rgba(255, 255, 255, 0.4);  /* Cor clara padrão */
       color: white;
-      padding: 14px 38px;    /* <<< tamanho do botão (maior) */
+      padding: 14px 38px;    
       border-radius: 8px;
-      font-size: 18px;       /* <<< tamanho do texto */
-      backdrop-filter: blur(6px);
+      font-size: 18px;       
+      backdrop-filter: blur(8px);
       transition: background 0.3s, transform 0.2s;
       display: inline-block;
+      white-space: nowrap;  /* <<< mantém tudo na mesma linha */
     }
 
     #presave-link a:hover {
-      background: rgba(255,255,255,0.25);
-      transform: scale(1.05);  /* leve zoom ao passar o mouse */
+      background: rgba(255, 255, 255, 0.55);
+      transform: scale(1.05);
+    }
+
+    #presave-link a:active {
+      background: rgba(120, 120, 120, 0.6);
+      transform: scale(0.98);
     }
 
     a-scene { display: none; }
@@ -112,11 +118,18 @@
     /* ----- Responsivo para celular ----- */
     @media (max-width: 768px) {
       #presave-link {
-        bottom: 75px;           /* um pouco mais perto em telas pequenas */
+        bottom: 75px;
       }
       #presave-link a {
         font-size: 16px;
         padding: 12px 32px;
+      }
+    }
+
+    /* Permite quebra de linha apenas em telas muito pequenas */
+    @media (max-width: 320px) {
+      #presave-link a {
+        white-space: normal;
       }
     }
   </style>
@@ -173,9 +186,13 @@
       setTimeout(() => {
         start.style.display = 'none';
         scene.style.display = 'block';
-        fsButton.style.display = 'block';
-        linkBox.style.display = 'block';   // mostra o link centralizado
+        linkBox.style.display = 'block';   
         music.play();
+
+        // Mostra o botão de tela cheia apenas em desktop
+        if (window.innerWidth > 768) {
+          fsButton.style.display = 'block';
+        }
       }, 800);
     }
 
@@ -236,7 +253,7 @@
     });
     document.querySelector('a-scene').setAttribute('smooth-look', '');
 
-    /* ---------- Tela cheia ---------- */
+    /* ---------- Tela cheia (apenas desktop) ---------- */
     const toggleBtn = document.getElementById('toggleFullscreen');
     toggleBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
@@ -252,6 +269,11 @@
         ? '⛶ Sair da tela cheia'
         : '⛶ Tela cheia';
     });
+
+    // Oculta o botão de fullscreen em dispositivos móveis
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+      document.getElementById('fullscreen').style.display = 'none';
+    }
   </script>
 </body>
 </html>
