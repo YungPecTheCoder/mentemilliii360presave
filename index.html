@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mixtape 360°</title>
+  <title>Mente Milionária Tape 360° Tour</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
     html, body {
@@ -24,7 +24,9 @@
       text-align: center;
       z-index: 3;
       transition: opacity 0.8s ease;
+      padding: 0 20px; /* afasta o conteúdo das bordas */
     }
+
     #start-screen::before {
       content: "";
       position: absolute;
@@ -34,15 +36,34 @@
       transform: scale(1.05);
       z-index: 1;
     }
+
     #start-content {
       position: relative;
       z-index: 3;
       color: white;
+      max-width: 400px;
+    }
+
+    /* ------ Espaçamento e tipografia ------ */
+    #start-content h1 {
+      margin: 0 0 8px 0;
+      line-height: 1.2;
+    }
+
+    #start-content p {
+      margin: 4px 0;
+      line-height: 1.3;
+    }
+
+    /* ------ Texto menor e suave para o aviso Motion Sense ------ */
+    #start-content p.disclaimer {
+      font-size: 14px;
+      opacity: 0.9;
     }
 
     button {
       padding: 0.9em 1.4em;
-      margin-top: 20px;
+      margin-top: 18px;
       font-size: 18px;
       border: none;
       border-radius: 6px;
@@ -52,6 +73,7 @@
       cursor: pointer;
       transition: background 0.3s;
     }
+
     button:hover { background: rgba(255,255,255,0.3); }
 
     /* ---------- Botão tela cheia ---------- */
@@ -85,15 +107,15 @@
 
     #presave-link a {
       text-decoration: none;
-      background: rgba(255, 255, 255, 0.4);  /* Cor clara padrão */
+      background: rgba(255, 255, 255, 0.4);
       color: white;
-      padding: 14px 38px;    
+      padding: 14px 38px;
       border-radius: 8px;
-      font-size: 18px;       
+      font-size: 18px;
       backdrop-filter: blur(8px);
       transition: background 0.3s, transform 0.2s;
       display: inline-block;
-      white-space: nowrap;  /* <<< mantém tudo na mesma linha */
+      white-space: nowrap;
     }
 
     #presave-link a:hover {
@@ -126,7 +148,7 @@
       }
     }
 
-    /* Permite quebra de linha apenas em telas muito pequenas */
+    /* Permite quebra da frase apenas em telas muito pequenas */
     @media (max-width: 320px) {
       #presave-link a {
         white-space: normal;
@@ -139,8 +161,9 @@
   <!-- TELA INICIAL -->
   <div id="start-screen">
     <div id="start-content">
-      <h1>Sua Mixtape 360°</h1>
+      <h1>Mente Milionária Tape</h1>
       <p>Entre na experiência</p>
+      <p class="disclaimer">(Permita o uso do <b>Motion Sense</b> para olhar ao redor movimentando o celular)</p>
       <button onclick="startExperience()">Entrar</button>
     </div>
   </div>
@@ -186,7 +209,7 @@
       setTimeout(() => {
         start.style.display = 'none';
         scene.style.display = 'block';
-        linkBox.style.display = 'block';   
+        linkBox.style.display = 'block';
         music.play();
 
         // Mostra o botão de tela cheia apenas em desktop
